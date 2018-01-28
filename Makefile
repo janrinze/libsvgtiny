@@ -8,11 +8,12 @@
 COMPONENT := svgtiny
 COMPONENT_VERSION := 0.1.6
 # Default to a static library
-COMPONENT_TYPE ?= lib-static
+#COMPONENT_TYPE ?= lib-static
+COMPONENT_TYPE ?= lib-shared
 
 # Setup the tooling
 PREFIX ?= /opt/netsurf
-NSSHARED ?= $(PREFIX)/share/netsurf-buildsystem
+NSSHARED ?= NetSurfBLD
 include $(NSSHARED)/makefiles/Makefile.tools
 
 # Reevaluate when used, as BUILDDIR won't be defined yet

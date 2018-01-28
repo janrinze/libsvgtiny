@@ -59,6 +59,8 @@ static svgtiny_code svgtiny_add_path(float *p, unsigned int n,
 static void _svgtiny_parse_color(const char *s, svgtiny_colour *c,
 		struct svgtiny_parse_state_gradient *grad,
 		struct svgtiny_parse_state *state);
+static void _svgtiny_parse_opacity(const char *s, svgtiny_colour *c,
+		struct svgtiny_parse_state *state);
 
 /**
  * Call this to ref the strings in a gradient state.
@@ -269,6 +271,7 @@ svgtiny_code svgtiny_parse(struct svgtiny_diagram *diagram,
 	/*state.style = css_base_style;
 	state.style.font_size.value.length.value = option_font_size * 0.1;*/
 	state.fill = 0x000000;
+	state.opacity = 0x00000000; // fully opaque
 	state.stroke = svgtiny_TRANSPARENT;
 	state.stroke_width = 1;
 
@@ -1384,7 +1387,11 @@ void svgtiny_parse_paint_attributes(dom_element *node,
 {
 	dom_string *attr;
 	dom_exception exc;
-	
+	exc = dom_element_get_attribute(node, state->interned_opacity, &attr);
+	if (exc == DOM_NO_ERR && attr != NULL) {
+		svgtiny_parse_opacity(attr, &state->opacity, state);
+		dom_string_unref(attr);
+	}
 	exc = dom_element_get_attribute(node, state->interned_fill, &attr);
 	if (exc == DOM_NO_ERR && attr != NULL) {
 		svgtiny_parse_color(attr, &state->fill, &state->fill_grad, state);
@@ -1418,6 +1425,14 @@ void svgtiny_parse_paint_attributes(dom_element *node,
 			_svgtiny_parse_color(value, &state->fill, &state->fill_grad, state);
 			free(value);
 		}
+		if ((s = strstr(style, "opacity:"))) {
+			s += 8;
+			while (*s == ' ')
+				s++;
+			value = strndup(s, strcspn(s, "; "));
+			_svgtiny_parse_opacity(value, &state->opacity,state);
+			free(value);
+		}
 		if ((s = strstr(style, "stroke:"))) {
 			s += 7;
 			while (*s == ' ')
@@ -1439,8 +1454,15 @@ void svgtiny_parse_paint_attributes(dom_element *node,
 		dom_string_unref(attr);
 	}
 }
-
-
+static void _svgtiny_parse_opacity(const char *s, svgtiny_colour *c,
+		struct svgtiny_parse_state *state)
+{
+	unsigned int t;
+	float n = 255.0f - atof((const char *) s)*255.0f;
+	UNUSED(state);
+	t=n;
+	*c=(t<<24)&svgtiny_TRANSPARENT;
+}
 /**
  * Parse a colour.
  */
@@ -1513,7 +1535,13 @@ void svgtiny_parse_color(dom_string *s, svgtiny_colour *c,
 	_svgtiny_parse_color(dom_string_data(s), c, grad, state);
 	dom_string_unref(s);
 }
-
+void svgtiny_parse_opacity(dom_string *s, svgtiny_colour *c,
+		struct svgtiny_parse_state *state)
+{
+	char *ss = strndup(dom_string_data(s), dom_string_byte_length(s));
+	_svgtiny_parse_opacity(ss, c, state);
+	free(ss);
+}
 /**
  * Parse font attributes, if present.
  */
@@ -1695,7 +1723,7 @@ struct svgtiny_shape *svgtiny_add_shape(struct svgtiny_parse_state *state)
 	shape->path = 0;
 	shape->path_length = 0;
 	shape->text = 0;
-	shape->fill = state->fill;
+	shape->fill = state->fill | (state->opacity & svgtiny_TRANSPARENT);
 	shape->stroke = state->stroke;
 	shape->stroke_width = lroundf((float) state->stroke_width *
 			(state->ctm.a + state->ctm.d) / 2.0);

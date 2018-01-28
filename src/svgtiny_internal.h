@@ -51,6 +51,7 @@ struct svgtiny_parse_state {
 	/* paint attributes */
 	svgtiny_colour fill;
 	svgtiny_colour stroke;
+	svgtiny_colour opacity;
 	int stroke_width;
 
 	/* gradients */
@@ -71,6 +72,8 @@ float svgtiny_parse_length(dom_string *s, int viewport_size,
 		const struct svgtiny_parse_state state);
 void svgtiny_parse_color(dom_string *s, svgtiny_colour *c,
 		struct svgtiny_parse_state_gradient *grad,
+		struct svgtiny_parse_state *state);
+void svgtiny_parse_opacity(dom_string *s, svgtiny_colour *c,
 		struct svgtiny_parse_state *state);
 void svgtiny_parse_transform(char *s, float *ma, float *mb,
 		float *mc, float *md, float *me, float *mf);
